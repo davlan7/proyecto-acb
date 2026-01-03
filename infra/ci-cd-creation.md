@@ -1,136 +1,136 @@
-# CI/CD Creation Process - Full Documentation
+# Documentación de Creación de CI/CD - Proceso Completo
 
-Complete walkthrough of building a production-ready CI/CD environment from scratch using Terraform, Netlify, Supabase, and local automation scripts.
+Documentación detallada del proceso de creación de un entorno de producción listo para CI/CD utilizando Terraform, Netlify, Supabase y scripts de automatización local.
 
-## 📋 Initial Requirements
+## 📋 Requisitos Iniciales
 
-**Goal:** Set up 100% Infrastructure as Code (IaC) + Continuous Deployment with minimal manual intervention.
+**Objetivo:** Configurar 100% Infraestructura como Código (IaC) + Despliegue Continuo con intervención manual mínima.
 
-**Constraints:**
-- No external CI/CD runners initially
-- All automation via local bash scripts
-- Browser-based authentication (redirects only)
-- Terminal-only execution
+**Restricciones:**
+- Sin corredores CI/CD externos inicialmente
+- Toda automatización mediante scripts bash locales
+- Autenticación por navegador (solo redirects)
+- Ejecución solo en terminal
 
-## 🔑 Phase 1: Manual Setup (Minimal Intervention)
+## 🔑 Fase 1: Configuración Manual (Intervención Mínima)
 
-### 1.1 Install Required Tools
+### 1.1 Instalar Herramientas Requeridas
 
 ```bash
-# Install via apt/npm
+# Instalar mediante apt/npm
 terraform install
 supabase install  
 netlify install via npm
 gh install via apt
 npm install
 
-# Verify installations
+# Verificar instalaciones
 terraform --version     # v1.13.4+
 supabase --version      # 2.67.1+
 netlify --version       # 23.13.0+
 gh --version            # 2.83.2+
 ```
 
-### 1.2 Browser-Based Authentication (Single Click Each)
+### 1.2 Autenticación por Navegador (Un clic cada una)
 
-No manual token copying - each CLI handles OAuth flow:
+Sin necesidad de copiar tokens manualmente - cada CLI maneja el flujo OAuth:
 
 ```bash
-supabase login          # Browser opens → Click authorize → Auto token stored
-netlify login           # Browser opens → Click authorize → Auto token stored  
-gh auth login           # Browser opens → Click authorize → Auto token stored
+supabase login          # Navegador se abre → Clic autorizar → Token almacenado automático
+netlify login           # Navegador se abre → Clic autorizar → Token almacenado automático
+gh auth login           # Navegador se abre → Clic autorizar → Token almacenado automático
 ```
 
-**Result:** Three service integrations authenticated locally with ~3 clicks total.
+**Resultado:** Tres integraciones de servicio autenticadas localmente con ~3 clics totales.
 
-### 1.3 Manual Secrets Input (One Time)
+### 1.3 Entrada Manual de Secretos (Una sola vez)
 
-Single interactive prompt to enter credentials:
+Prompt interactivo único para ingresar credenciales:
 
 ```bash
 ./infra/secrets.sh generate
 
-# Prompted for:
-✓ SUPABASE_ORG_ID          (from supabase login)
-✓ NETLIFY_TOKEN            (from netlify login)
-✓ GITHUB_TOKEN             (from gh auth login)
-✓ GITHUB_OWNER             (your username)
-✓ POSTGRES_PASSWORD        (custom)
+# Se solicita:
+✓ SUPABASE_ORG_ID          (desde supabase login)
+✓ NETLIFY_TOKEN            (desde netlify login)
+✓ GITHUB_TOKEN             (desde gh auth login)
+✓ GITHUB_OWNER             (tu usuario)
+✓ POSTGRES_PASSWORD        (personalizado)
 ```
 
-**Result:** `infra/secrets.tfvars` created (git-ignored, never committed).
+**Resultado:** `infra/secrets.tfvars` creado (git-ignored, nunca se commitea).
 
-## ⚙️ Phase 2: Infrastructure as Code Setup
+## ⚙️ Fase 2: Configuración de Infraestructura como Código
 
-### 2.1 Terraform Configuration Files
+### 2.1 Archivos de Configuración de Terraform
 
-Created three core files:
+Se crearon tres archivos principales:
 
 ```bash
-infra/variables.tf          # 8 input variables (tokens, credentials)
-infra/main.tf               # GitHub provider + 5 github_actions_secret resources
-infra/outputs.tf            # Info about created resources
+infra/variables.tf          # 8 variables de entrada (tokens, credenciales)
+infra/main.tf               # Proveedor GitHub + 5 recursos github_actions_secret
+infra/outputs.tf            # Información sobre recursos creados
 ```
 
-### 2.2 Terraform Initialization & Application
+### 2.2 Inicialización y Aplicación de Terraform
 
 ```bash
-./infra/infra.sh init       # Downloads GitHub provider
+./infra/infra.sh init       # Descarga el proveedor GitHub
 
-./infra/infra.sh apply      # Creates 5 GitHub Actions secrets:
+./infra/infra.sh apply      # Crea 5 secretos de GitHub Actions:
                             # - SUPABASE_URL
                             # - SUPABASE_ANON_KEY
                             # - SUPABASE_SERVICE_ROLE_KEY
                             # - NETLIFY_TOKEN
                             # - NETLIFY_SITE_ID
 
-# Result: Secrets now in https://github.com/davlan7/proyecto-acb/settings/secrets/actions
+# Resultado: Secretos ahora en https://github.com/davlan7/proyecto-acb/settings/secrets/actions
 ```
 
-## 🌐 Phase 3: Cloud Resource Creation
+## 🌐 Fase 3: Creación de Recursos en la Nube
 
-### 3.1 Supabase Project Creation
+### 3.1 Creación de Proyecto Supabase
 
-**Problem:** No way to create Supabase project from local CLI without existing project ref.
+**Problema:** No hay manera de crear proyecto Supabase desde CLI local sin ref de proyecto existente.
 
-**Solution:** Created project via CLI with org-id:
+**Solución:** Crear proyecto vía CLI con org-id:
 
 ```bash
 supabase projects create "proyecto-acb-prod" \
   --org-id "wxbhoxqrxtdpdgjmywdq" \
   --db-password 'SecurePass123!@#'
 
-# Result:
-# Project ID: jvmlvssftpyvxpjiplsu
-# Region: sa-east-1 (South America)
+# Resultado:
+# ID del Proyecto: jvmlvssftpyvxpjiplsu
+# Región: sa-east-1 (América del Sur)
 # URL: https://jvmlvssftpyvxpjiplsu.supabase.co
 
 supabase link --project-ref "jvmlvssftpyvxpjiplsu"
 
-# Extracted API keys:
-# - anon key: eyJhbGciOiJIUzI1NiIs...
-# - service_role key: eyJhbGciOiJIUzI1NiIs...
+# Claves API extraídas:
+# - clave anon: eyJhbGciOiJIUzI1NiIs...
+# - clave service_role: eyJhbGciOiJIUzI1NiIs...
 ```
 
-### 3.2 Netlify Site Creation
+### 3.2 Creación de Sitio en Netlify
 
-**Problem:** No site existed to deploy to.
+**Problema:** No existía sitio para desplegar.
 
-**Solution:** Created site via CLI:
+**Solución:** Crear sitio vía CLI:
 
 ```bash
 export NETLIFY_AUTH_TOKEN="nfp_6Hb74pUATogc7FcuDNP82cBL9akrV8bA3e9a"
 
 netlify sites:create --name "proyecto-acb-prod"
 
-# Result:
-# Site ID: 5b8bc027-2524-44a8-aaf3-d55f9b1fffc0
+# Resultado:
+# ID del Sitio: 5b8bc027-2524-44a8-aaf3-d55f9b1fffc0
 # URL: https://proyecto-acb-prod.netlify.app
 ```
 
-### 3.3 Updated Secrets File
+### 3.3 Actualizar Archivo de Secretos
 
-Added Supabase and Netlify details to `infra/secrets.tfvars`:
+Se agregaron detalles de Supabase y Netlify a `infra/secrets.tfvars`:
 
 ```bash
 supabase_url = "https://jvmlvssftpyvxpjiplsu.supabase.co"
@@ -139,87 +139,87 @@ supabase_service_role_key = "eyJhbGc..."
 netlify_site_id = "5b8bc027-2524-44a8-aaf3-d55f9b1fffc0"
 ```
 
-## 🤖 Phase 4: Automation Scripts Creation
+## 🤖 Fase 4: Creación de Scripts de Automatización
 
-### 4.1 Seven Core Scripts (All in infra/)
+### 4.1 Siete Scripts Principales (Todos en infra/)
 
-| Script | Purpose |
-|--------|---------|
-| `run.sh` | Master orchestrator (setup, build, deploy, status, clean) |
-| `infra.sh` | Terraform management wrapper |
-| `deploy.sh` | Netlify + Supabase deployment |
-| `cleanup.sh` | Artifact cleanup |
-| `secrets.sh` | Local secrets management |
-| `setup.sh` | Interactive setup wizard |
-| `status.sh` | Project health dashboard |
+| Script | Propósito |
+|--------|-----------|
+| `run.sh` | Orquestador maestro (setup, build, deploy, status, clean) |
+| `infra.sh` | Wrapper de gestión de Terraform |
+| `deploy.sh` | Despliegue a Netlify + Supabase Functions |
+| `cleanup.sh` | Limpieza de artefactos |
+| `secrets.sh` | Gestión de secretos locales |
+| `setup.sh` | Asistente de configuración interactiva |
+| `status.sh` | Panel de estado del proyecto |
 
-### 4.2 Script Functionality
+### 4.2 Funcionalidad de Scripts
 
-**run.sh** (Main Orchestrator):
+**run.sh** (Orquestador Principal):
 ```bash
-./run.sh setup      # Creates secrets, installs deps, init terraform
+./run.sh setup      # Crea secretos, instala deps, init terraform
 ./run.sh build      # npm install + vite build
-./run.sh deploy     # Uploads to Netlify + Supabase Functions
-./run.sh status     # Shows health check
-./run.sh clean      # Removes build artifacts
+./run.sh deploy     # Sube a Netlify + Supabase Functions
+./run.sh status     # Mostrar verificación de salud
+./run.sh clean      # Elimina artefactos de build
 ```
 
-**deploy.sh** (Production Deployment):
-- Validates secrets exist
-- Uploads frontend/dist/ to Netlify
-- Deploys Supabase Functions
-- Returns live URL
+**deploy.sh** (Despliegue a Producción):
+- Valida que secretos existan
+- Sube frontend/dist/ a Netlify
+- Despliega funciones Supabase
+- Retorna URL en vivo
 
-**infra.sh** (Terraform Wrapper):
-- `init` - Initialize Terraform
-- `plan` - Preview infrastructure changes
-- `apply` - Create/update cloud resources
-- `destroy` - Remove resources (dangerous)
+**infra.sh** (Wrapper de Terraform):
+- `init` - Inicializar Terraform
+- `plan` - Vista previa de cambios de infraestructura
+- `apply` - Crear/actualizar recursos en la nube
+- `destroy` - Eliminar recursos (peligroso)
 
-### 4.3 Repository Structure
+### 4.3 Estructura de Repositorio
 
-Moved all scripts to `infra/` folder:
-- Cleaner root directory
-- All CI/CD tools centralized
-- Removed documentation from earlier iterations (SCRIPTS.md, docs/)
-- Minimal viable structure: only code, no guides in repo
+Se movieron todos los scripts a la carpeta `infra/`:
+- Directorio raíz más limpio
+- Todas las herramientas CI/CD centralizadas
+- Se eliminó documentación de iteraciones anteriores (SCRIPTS.md, docs/)
+- Estructura mínima viable: solo código, sin guías en el repo
 
-## 🐳 Phase 5: GitHub Actions Consideration (Omitted)
+## 🐳 Fase 5: Consideración de GitHub Actions (Omitida)
 
-### Initial Plan
+### Plan Inicial
 ```bash
-# Install act (local GitHub Actions runner)
+# Instalar act (corredor local de GitHub Actions)
 curl -s https://raw.githubusercontent.com/nektos/act/master/install.sh | bash
 
-# Create .github/workflows/ci-cd.yml
-# Test locally: act push --job build-and-test
+# Crear .github/workflows/ci-cd.yml
+# Probar localmente: act push --job build-and-test
 ```
 
-### Problem Encountered
+### Problema Encontrado
 ```
-Docker credential issues on WSL (Windows Subsystem for Linux)
-- WSL-specific path issues
-- Docker auth failures
-- Interactive prompts blocking automation
+Problemas de credenciales de Docker en WSL (Subsistema de Windows para Linux)
+- Problemas de rutas específicas de WSL
+- Fallos de autenticación de Docker
+- Prompts interactivos bloqueando automatización
 ```
 
-### Decision Made
-**Omit GitHub Actions workflows for now.** Local bash scripts are simpler:
-- No Docker dependency
-- Direct CLI tool calls
-- Transparent error messages
-- Immediate feedback
+### Decisión Tomada
+**Omitir flujos de GitHub Actions por ahora.** Scripts bash locales son más simples:
+- Sin dependencia de Docker
+- Llamadas directas a herramientas CLI
+- Mensajes de error transparentes
+- Retroalimentación inmediata
 
-**Trade-off:** No cloud CI/CD trigger on push, but 100% local control and faster iteration.
+**Compensación:** Sin disparador de CI/CD en la nube para push, pero 100% control local e iteración más rápida.
 
-## 📦 Phase 6: Frontend & Supabase Functions Deployment
+## 📦 Fase 6: Despliegue de Frontend y Funciones Supabase
 
-### 6.1 Frontend Compilation
+### 6.1 Compilación de Frontend
 
 ```bash
 ./run.sh build
 
-# Output:
+# Salida:
 # ✓ 31 modules transformed
 # dist/index.html               0.47 kB
 # dist/assets/index-*.css       0.37 kB
@@ -227,39 +227,39 @@ Docker credential issues on WSL (Windows Subsystem for Linux)
 # ✓ built in 1.87s
 ```
 
-### 6.2 Supabase Serverless Functions
+### 6.2 Funciones Serverless de Supabase
 
-Created test function:
+Se creó función de prueba:
 
 ```typescript
 // supabase/functions/test-function/index.ts
 export async function POST(req) {
-  return { message: "Hello World! 🚀 CI/CD working!" }
+  return { message: "¡Hola Mundo! 🚀 CI/CD funcionando!" }
 }
 ```
 
-Deployment:
+Despliegue:
 
 ```bash
 supabase functions deploy test-function --project-ref "jvmlvssftpyvxpjiplsu"
 
-# Result: Function live at /functions/v1/test-function
+# Resultado: Función en vivo en /functions/v1/test-function
 ```
 
-### 6.3 Netlify Deployment
+### 6.3 Despliegue en Netlify
 
 ```bash
 ./run.sh deploy
 
-# Netlify Build Output:
+# Salida de Build de Netlify:
 # ✓ Deploy complete
-# 🚀 Deployed to production URL: https://proyecto-acb-prod.netlify.app
+# 🚀 Desplegado a URL de producción: https://proyecto-acb-prod.netlify.app
 # HTTP Status: 200 OK
 ```
 
-## ✅ Phase 7: Validation & Testing
+## ✅ Fase 7: Validación y Pruebas
 
-### 7.1 Frontend Validation
+### 7.1 Validación de Frontend
 
 ```bash
 curl -I https://proyecto-acb-prod.netlify.app
@@ -269,79 +269,79 @@ curl https://proyecto-acb-prod.netlify.app | grep "<title>"
 # <title>Proyecto ACB - Hola Mundo</title> ✅
 ```
 
-### 7.2 Backend Validation
+### 7.2 Validación de Backend
 
 ```bash
 curl -X POST "https://jvmlvssftpyvxpjiplsu.supabase.co/functions/v1/test-function" \
   -H "Authorization: Bearer eyJhbGc..." \
   -H "Content-Type: application/json" \
-  -d '{"name":"Production"}'
+  -d '{"name":"Producción"}'
 
-# Response: {"message":"Hello Production! 🚀 CI/CD working!"} ✅
+# Respuesta: {"message":"¡Hola Producción! 🚀 CI/CD funcionando!"} ✅
 ```
 
-### 7.3 GitHub Sync
+### 7.3 Sincronización con GitHub
 
 ```bash
-git add . && git commit -m "CI/CD Complete" && git push
+git add . && git commit -m "CI/CD Completo" && git push
 
-# Result: 3 commits in davlan7/proyecto-acb ✅
-# Secrets visible in GitHub Settings ✅
+# Resultado: 3 commits en davlan7/proyecto-acb ✅
+# Secretos visibles en Configuración de GitHub ✅
 ```
 
-## 📊 Final Architecture
+## 📊 Arquitectura Final
 
 ```
-User Edit → ./run.sh build → npm run build → frontend/dist/
+Usuario Edita → ./run.sh build → npm run build → frontend/dist/
                                                     ↓
-                          ./run.sh deploy → Netlify (Live URL)
+                          ./run.sh deploy → Netlify (URL en Vivo)
                                                     ↓
-                          Supabase Functions Deploy
+                          Despliegue de Funciones Supabase
                                     ↓
                           git push → GitHub
 ```
 
-## 🔐 Security Implementation
+## 🔐 Implementación de Seguridad
 
-| Layer | Implementation |
-|-------|-----------------|
-| Local Secrets | `infra/secrets.tfvars` (git-ignored) |
-| Cloud Secrets | GitHub Actions Secrets (Terraform-managed) |
-| IaC Secrets | Variables.tf references sensitive flag |
-| No Hardcoding | All credentials passed via Terraform |
+| Capa | Implementación |
+|------|-----------------|
+| Secretos Locales | `infra/secrets.tfvars` (git-ignored) |
+| Secretos en la Nube | Secretos de GitHub Actions (gestionados por Terraform) |
+| Secretos de IaC | variables.tf referencias con bandera sensible |
+| Sin Hardcoding | Todas las credenciales pasadas vía Terraform |
 
-## ⚡ Key Decisions Made
+## ⚡ Decisiones Clave Tomadas
 
-1. **Terraform for Cloud Resources** - Not manual GUI clicks
-2. **Local Scripts Over CI/CD** - Simpler, more transparent, no Docker issues
-3. **Secrets via Terraform** - Automatic GitHub sync, no manual copy-paste
-4. **Minimal Documentation** - Only README.md + ci-cd-creation.md in infra/
-5. **Supabase CLI for Project** - Automated project creation
+1. **Terraform para Recursos en la Nube** - No clics manuales en GUI
+2. **Scripts Locales sobre CI/CD** - Más simples, más transparentes, sin problemas de Docker
+3. **Secretos vía Terraform** - Sincronización automática de GitHub, sin copiar-pegar manual
+4. **Documentación Mínima** - Solo README.md + ci-cd-creation.md en infra/
+5. **Supabase CLI para Proyecto** - Creación automática de proyecto
 
-## 📈 Performance Metrics
+## 📈 Métricas de Rendimiento
 
-- **Frontend Build Time:** 1.87 seconds (Vite)
-- **Frontend Size:** 143 KB JS + 0.37 KB CSS
-- **Deployment Time:** ~10 seconds (Netlify)
-- **Function Deploy Time:** ~5 seconds (Supabase)
-- **Total Cycle (build→deploy):** ~20 seconds
+- **Tiempo de Build de Frontend:** 1.87 segundos (Vite)
+- **Tamaño de Frontend:** 143 KB JS + 0.37 KB CSS
+- **Tiempo de Despliegue:** ~10 segundos (Netlify)
+- **Tiempo de Despliegue de Funciones:** ~5 segundos (Supabase)
+- **Ciclo Total (build→deploy):** ~20 segundos
 
-## 🎯 Lessons Learned
+## 🎯 Lecciones Aprendidas
 
-1. **IaC First** - Easier to recreate entire setup from code
-2. **Local Scripts Simpler** - No container/Docker complexity
-3. **Secrets Management Critical** - Terraform + .gitignore is best approach
-4. **Browser Auth Works** - OAuth flows in CLIs are seamless
-5. **Test Immediately** - Validate each component right after deployment
+1. **IaC Primero** - Más fácil recrear setup completo desde código
+2. **Scripts Locales Más Simples** - Sin complejidad de contenedores/Docker
+3. **Gestión de Secretos Crítica** - Terraform + .gitignore es mejor enfoque
+4. **Auth por Navegador Funciona** - Flujos OAuth en CLIs son transparentes
+5. **Validar Inmediatamente** - Validar cada componente justo después del despliegue
 
-## 🚀 Ready for Production
+## 🚀 Listo para Producción
 
-✅ Frontend Live: https://proyecto-acb-prod.netlify.app  
+✅ Frontend En Vivo: https://proyecto-acb-prod.netlify.app  
 ✅ Backend Serverless: https://jvmlvssftpyvxpjiplsu.supabase.co  
-✅ Infrastructure Automated: Terraform  
-✅ Deployment Automated: Bash Scripts  
-✅ Secrets Secured: GitHub Actions + Local git-ignored files  
-✅ All Validated: HTTP 200, Function tests passed
+✅ Infraestructura Automatizada: Terraform  
+✅ Despliegue Automatizado: Scripts Bash  
+✅ Secretos Asegurados: GitHub Actions + archivos locales git-ignored  
+✅ Todo Validado: HTTP 200, pruebas de funciones exitosas
 
-**Total Manual Work:** ~30 minutes (browser auth + secret input)  
-**Total Automated Work:** All scaling, deployments, infrastructure updates
+**Trabajo Manual Total:** ~30 minutos (auth por navegador + entrada de secretos)  
+**Trabajo Automatizado:** Todos los escalados, despliegues, actualizaciones de infraestructura
